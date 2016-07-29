@@ -38,7 +38,7 @@ dir_list_test = [x for x in dir_list_test if 'tif' in x]
 
 test_num = len(dir_list_test)
 
-
+#Did Rosa do this right?
 
 X_test = np.empty((1, 1, 42,58))
 
