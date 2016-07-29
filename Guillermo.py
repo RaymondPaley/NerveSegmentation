@@ -18,7 +18,7 @@ Created on Sun Jun 19 14:48:23 2016
 
 @author: Abecedarian
 """
-
+#HELLO, CAN YOU SEE MY MODIFICATION (GUILLERMO)?
 import lasagne
 import theano
 import theano.tensor as T
