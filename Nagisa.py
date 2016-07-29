@@ -19,6 +19,10 @@ Created on Sun Jun 19 14:48:23 2016
 @author: Abecedarian
 """
 
+#i hope this works
+
+
+
 import lasagne
 import theano
 import theano.tensor as T
