@@ -116,7 +116,11 @@ y_train = np.empty(train_num)
 
 with open('/Images/errors.csv','w') as csvfile:
     error = csv.writer(csvfile, delimiter=',')
-    error.writerow(['Train Error'])    
+    error.writerow(['Train Error'])
+
+
+
+print 5    
     
     for passNumber in range(5):
         np.random.seed(passNumber)       
