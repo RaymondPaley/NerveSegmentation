@@ -90,7 +90,7 @@ train_fn = theano.function([input_var, target_var], loss, updates=updates, allow
 
 # load previously obtained params
 
-with np.load('/Images/model_random_chunks_binaryBlocks.npz') as f:
+with np.load('/Images/model_random_chunks_binaryBlocksTrimmed.npz') as f:
      param_values = [f['arr_%d' % i] for i in range(len(f.files))]
 
 lasagne.layers.set_all_param_values(network, param_values)
@@ -123,7 +123,17 @@ with open('/Images/errors.csv','w') as csvfile:
                 X_train[100*i+j,0] = misc.imread(train_folder+os.sep+dir_list[shuffled[i]])[42*k:(42*k+42),58*l:(58*l+58)]
                 y_train[100*i+j] = int(np.sum(misc.imread(train_folder + os.sep+dir_list[shuffled[i]].split('.')[0] + '_mask.tif')[42*k:(42*k+42),58*l:(58*l+58)])/(4.2*58*255))
                 
-                y_train[100*i+j] = int(y_train[100*i+j] > 0)                
+                y_train[100*i+j] = int(y_train[100*i+j] > 0)
+
+                if sum(y_train[100*i:100*(i+1)]) > 0:
+                    for j in range(100):
+                        if y_train[100*i+j] == 0:
+                            y_train[100*i+j] = 2
+                else:
+                    indicesToRemove = np.random.choice(range(100*i,100*(i+1)), 93, replace = False)
+                    y_train[indicesToRemove] = 2
+
+        X_train, y_train = X_train[y_train != 2], y_train[y_train != 2]
                                 
                 ###Testing this code
 #                temp = np.zeros((420,580))                
@@ -156,7 +166,7 @@ with open('/Images/errors.csv','w') as csvfile:
         ## use trained network for predictions
         test_prediction = lasagne.layers.get_output(network, deterministic=True)
         
-        np.savez('/Images/model_random_chunks_binaryBlocks.npz', *lasagne.layers.get_all_param_values(network))
+        np.savez('/Images/model_random_chunks_binaryBlocksTrimmed.npz', *lasagne.layers.get_all_param_values(network))
         
         predict_fn = theano.function([input_var], T.argmax(test_prediction, axis=1),allow_input_downcast = True)
         
