@@ -119,7 +119,7 @@ with open('/Images/errors.csv','w') as csvfile:
         for i in range(train_num): 
             for j in range(100):
                 k = j % 10
-                l = (j - k)/10
+                l = j//10
                 X_train[100*i+j,0] = misc.imread(train_folder+os.sep+dir_list[shuffled[i]])[42*k:(42*k+42),58*l:(58*l+58)]
                 y_train[100*i+j] = int(np.sum(misc.imread(train_folder + os.sep+dir_list[shuffled[i]].split('.')[0] + '_mask.tif')[42*k:(42*k+42),58*l:(58*l+58)])/(4.2*58*255))
                 
