@@ -105,17 +105,17 @@ dir_list = [x for x in dir_list if not('mask' in x)]
 #Train in Chunks
 train_num = 200
 
-X_train = np.empty((train_num*100, 1, 42,58))
-y_train = np.empty(train_num*100)
-
 with open('/Images/errors.csv','w') as csvfile:
     error = csv.writer(csvfile, delimiter=',')
     error.writerow(['Train Error'])    
     
-    for passNumber in range(1):
+    for passNumber in range(1800):
+        X_train = np.empty((train_num*100, 1, 42,58))
+        y_train = np.empty(train_num*100)        
+        
         np.random.seed(passNumber)       
         shuffled = np.random.choice(range(len(dir_list)), train_num, replace = False)
-          
+        
         for i in range(train_num): 
             for j in range(100):
                 k = j % 10
@@ -125,15 +125,16 @@ with open('/Images/errors.csv','w') as csvfile:
                 
                 y_train[100*i+j] = int(y_train[100*i+j] > 0)
 
-                if sum(y_train[100*i:100*(i+1)]) > 0:
-                    for j in range(100):
-                        if y_train[100*i+j] == 0:
-                            y_train[100*i+j] = 2
-                else:
-                    indicesToRemove = np.random.choice(range(100*i,100*(i+1)), 93, replace = False)
-                    y_train[indicesToRemove] = 2
+            if sum(y_train[100*i:100*(i+1)]) > 0:
+                for j in range(100):
+                    if y_train[100*i+j] == 0:
+                        y_train[100*i+j] = 2
+            else:
+                indicesToRemove = np.random.choice(range(100*i,100*(i+1)), 94, replace = False)
+                y_train[indicesToRemove] = 2
 
         X_train, y_train = X_train[y_train != 2], y_train[y_train != 2]
+        print(X_train.shape[0],y_train.shape[0])
                                 
                 ###Testing this code
 #                temp = np.zeros((420,580))                
