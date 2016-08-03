@@ -206,21 +206,38 @@ with open('/Images/Block_Profiles.csv','w') as csvfile:
 ## Looking at Some Images
 
 Block_Profiles = np.genfromtxt('/Users/tiruviluamala/Downloads/Block_Profiles.csv', delimiter=",")
-length = 5000
-block_sums = np.zeros(length)
+length = 20
+block_sums2 = np.zeros(length)
 
-for j in range(length):
-    i = j*100+1
+for i in range(length):
+    j = i*100+1
     temp = np.zeros((420,580))
     block_sum = 0                
     for m in range(100):
-#        k = m % 10
-#        l = m//10
-#        temp[42*k:(42*k+42),58*l:(58*l+58)] = Block_Profiles[i+m, 2]
-        block_sum = block_sum + Block_Profiles[i+m, 2]
-#    plt.imshow(temp)
-    block_sums[j] = block_sum
-plt.hist(block_sums)
+        k = m % 10
+        l = m//10
+        temp[42*k:(42*k+42),58*l:(58*l+58)] = Block_Profiles[j+m, 2]
+        block_sum = block_sum + Block_Profiles[j+m, 2]
+    plt.imshow(temp)
+    block_sums2[i] = block_sum
+plt.hist(block_sums2, bins = 100, range = [0,100])
+
+## Histogram for Training Images
+train_folder = '/Users/tiruviluamala/Desktop/UltrasoundNerveSegmentation/train'
+dir_list = os.listdir(train_folder)
+dir_list = [x for x in dir_list if not('mask' in x)]
+
+train_num = 5000
+block_sums = np.zeros(train_num)
+
+for i in range(train_num): 
+    for j in range(100):
+        k = j % 10
+        l = j//10
+        block_sums[i] = block_sums[i] + int(int(np.sum(misc.imread(train_folder + os.sep+dir_list[i].split('.')[0] + '_mask.tif')[42*k:(42*k+42),58*l:(58*l+58)])/(4.2*58*255)) > 0)
+    print(i)
+plt.hist(block_sums, bins = 16, range = [0,16])
+    
 #
 #
 #with open('/Images/Blocks_Submission.csv','w', newline='') as csvfile:
