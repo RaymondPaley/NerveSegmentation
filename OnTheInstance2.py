@@ -203,15 +203,16 @@ with open('/Images/Block_Profiles.csv','w') as csvfile:
 #            blockInfo[l-1] = row
 #        l = l+1
 #
-### Looking at Some Images
-#
-#i = 3
-#temp = np.zeros((420,580))                
-#for m in range(100):
-#    k = m % 10
-#    l = (m-k)/10
-#    temp[42*k:(42*k+42),58*l:(58*l+58)] = (blockInfo[i*100+m])*25.5
-#plt.imshow(temp)
+## Looking at Some Images
+
+Block_Profiles = np.genfromtxt('/Users/tiruviluamala/Downloads/Block_Profiles.csv', delimiter=",")
+i = 3
+temp = np.zeros((420,580))                
+for m in range(100):
+    k = m % 10
+    l = m//10
+    temp[42*k:(42*k+42),58*l:(58*l+58)] = (blockInfo[i*100+m])*25.5
+plt.imshow(temp)
 #
 #
 #with open('/Images/Blocks_Submission.csv','w', newline='') as csvfile:
