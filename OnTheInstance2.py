@@ -206,12 +206,13 @@ with open('/Images/Block_Profiles.csv','w') as csvfile:
 ## Looking at Some Images
 
 Block_Profiles = np.genfromtxt('/Users/tiruviluamala/Downloads/Block_Profiles.csv', delimiter=",")
-i = 3
+j = 0
+i = j*100+1
 temp = np.zeros((420,580))                
 for m in range(100):
     k = m % 10
     l = m//10
-    temp[42*k:(42*k+42),58*l:(58*l+58)] = (blockInfo[i*100+m])*25.5
+    temp[42*k:(42*k+42),58*l:(58*l+58)] = Block_Profiles[i+m, 2]
 plt.imshow(temp)
 #
 #
