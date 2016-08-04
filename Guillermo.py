@@ -91,7 +91,7 @@ train_fn = theano.function([input_var, target_var], loss, updates=updates, allow
 
 # load previously obtained params
 
-with np.load('/Images/model_random_chunks_binaryBlocksTrimmed.npz') as f:
+with np.load('/Images/model_random_chunks_binaryBlocksTrimmedReflections.npz') as f:
      param_values = [f['arr_%d' % i] for i in range(len(f.files))]
 
 lasagne.layers.set_all_param_values(network, param_values)
@@ -110,11 +110,12 @@ with open('/Images/errors.csv','w') as csvfile:
     error = csv.writer(csvfile, delimiter=',')
     error.writerow(['Train Error'])    
     
-    for passNumber in range(3):
+    for passNumber in range(720):
+        s_time = time.time()
         
         X_train = np.empty((train_num*100, 1, 42,58))
         X_trainrefhor = np.empty((train_num*100, 1, 42,58))
-        X_trainrefhver = np.empty((train_num*100, 1, 42,58))
+        X_trainrefver = np.empty((train_num*100, 1, 42,58))
         X_trainrot = np.empty((train_num*100, 1, 42,58))
         y_train = np.empty(train_num*100)
         
@@ -130,7 +131,7 @@ with open('/Images/errors.csv','w') as csvfile:
                 X_trainrefhor[100*i+j,0] = X_train[100*i+j,0][::-1, ::1]
                 
                 #Creating the vertical reflexion of each subimage
-                X_trainrefver = X_train[100*i+j,0][::1, ::-1]
+                X_trainrefver[100*i+j,0] = X_train[100*i+j,0][::1, ::-1]
                 
                 #Creating the rotation (two succesive reflexions) of each subimage
                 X_trainrot[100*i+j,0] = X_trainrefhor[100*i+j,0][::1, ::-1]
@@ -150,9 +151,15 @@ with open('/Images/errors.csv','w') as csvfile:
                 y_train[indicesToRemove] = 2
         
         #Choosing only some subimages for training
-        X_train, X_trainrefhor, X_trainrefver,  X_trainrot, y_train = X_train[y_train != 2], X_trainrefhor[y_train != 2], X_trainrefver[y_train != 2],  X_trainrot[y_train != 2], y_train[y_train != 2]
-        X_train = X_train + X_trainrefhor + X_trainrefver + X_trainrot
-        y_train = 4*y_train
+        X_train = X_train[y_train != 2]
+        X_trainrefhor = X_trainrefhor[y_train != 2]
+        X_trainrefver = X_trainrefver[y_train != 2]  
+        X_trainrot = X_trainrot[y_train != 2]
+        y_train = y_train[y_train != 2]
+        X_train = np.concatenate((X_train, X_trainrefhor, X_trainrefver, X_trainrot))
+        y_train = np.concatenate((y_train,y_train,y_train,y_train))
+        
+        print(X_trainrefhor.shape[0],X_trainrefver.shape[0],X_trainrot.shape[0],X_train.shape[0],y_train.shape[0], time.time() - s_time)
                                 
 ###Testing this code
 #                temp = np.zeros((420,580))                
@@ -185,7 +192,7 @@ with open('/Images/errors.csv','w') as csvfile:
         ## use trained network for predictions
         test_prediction = lasagne.layers.get_output(network, deterministic=True)
         
-        np.savez('/Images/model_random_chunks_binaryBlocksTrimmed.npz', *lasagne.layers.get_all_param_values(network))
+        np.savez('/Images/model_random_chunks_binaryBlocksTrimmedReflections.npz', *lasagne.layers.get_all_param_values(network))
         
         predict_fn = theano.function([input_var], T.argmax(test_prediction, axis=1),allow_input_downcast = True)
         
@@ -193,6 +200,7 @@ with open('/Images/errors.csv','w') as csvfile:
         
         Neel_Error = sum(abs(predict_fn(X_train[0:1000]) - y_train[0:1000]))
         print("Neel_Error for 10 images: %r" %Neel_Error)
+        print(time.time() - s_time)
         error.writerow([train_err / train_batches])
 
 ## Saving 
