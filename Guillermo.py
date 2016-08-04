@@ -110,7 +110,7 @@ with open('/Images/errors.csv','w') as csvfile:
     error = csv.writer(csvfile, delimiter=',')
     error.writerow(['Train Error'])    
     
-    for passNumber in range(1):
+    for passNumber in range(3):
         
         X_train = np.empty((train_num*100, 1, 42,58))
         X_trainrefhor = np.empty((train_num*100, 1, 42,58))
@@ -146,7 +146,7 @@ with open('/Images/errors.csv','w') as csvfile:
                     if y_train[100*i+j] == 0:
                         y_train[100*i+j] = 2
             else:
-                indicesToRemove = np.random.choice(range(100*i,100*(i+1)), 94, replace = False)
+                indicesToRemove = np.random.choice(range(100*i,100*(i+1)), 88, replace = False)
                 y_train[indicesToRemove] = 2
         
         #Choosing only some subimages for training
@@ -196,7 +196,7 @@ with open('/Images/errors.csv','w') as csvfile:
         error.writerow([train_err / train_batches])
 
 ## Saving 
-with open('/Images/Block_Profiles.csv','w') as csvfile:
+with open('/Images/Block_Profiles_Reflections.csv','w') as csvfile:
     imagesub = csv.writer(csvfile, delimiter=',')
     imagesub.writerow(['img','Block_Num','Block_Profile'])
     for i in range(test_num):
