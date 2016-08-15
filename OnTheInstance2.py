@@ -105,17 +105,17 @@ dir_list = [x for x in dir_list if not('mask' in x)]
 #Train in Chunks
 train_num = 200
 
-X_train = np.empty((train_num*100, 1, 42,58))
-y_train = np.empty(train_num*100)
-
 with open('/Images/errors.csv','w') as csvfile:
     error = csv.writer(csvfile, delimiter=',')
     error.writerow(['Train Error'])    
     
-    for passNumber in range(1):
+    for passNumber in range(1800):
+        X_train = np.empty((train_num*100, 1, 42,58))
+        y_train = np.empty(train_num*100)        
+        
         np.random.seed(passNumber)       
         shuffled = np.random.choice(range(len(dir_list)), train_num, replace = False)
-          
+        
         for i in range(train_num): 
             for j in range(100):
                 k = j % 10
@@ -125,15 +125,16 @@ with open('/Images/errors.csv','w') as csvfile:
                 
                 y_train[100*i+j] = int(y_train[100*i+j] > 0)
 
-                if sum(y_train[100*i:100*(i+1)]) > 0:
-                    for j in range(100):
-                        if y_train[100*i+j] == 0:
-                            y_train[100*i+j] = 2
-                else:
-                    indicesToRemove = np.random.choice(range(100*i,100*(i+1)), 93, replace = False)
-                    y_train[indicesToRemove] = 2
+            if sum(y_train[100*i:100*(i+1)]) > 0:
+                for j in range(100):
+                    if y_train[100*i+j] == 0:
+                        y_train[100*i+j] = 2
+            else:
+                indicesToRemove = np.random.choice(range(100*i,100*(i+1)), 94, replace = False)
+                y_train[indicesToRemove] = 2
 
         X_train, y_train = X_train[y_train != 2], y_train[y_train != 2]
+        print(X_train.shape[0],y_train.shape[0])
                                 
                 ###Testing this code
 #                temp = np.zeros((420,580))                
@@ -202,15 +203,41 @@ with open('/Images/Block_Profiles.csv','w') as csvfile:
 #            blockInfo[l-1] = row
 #        l = l+1
 #
-### Looking at Some Images
-#
-#i = 3
-#temp = np.zeros((420,580))                
-#for m in range(100):
-#    k = m % 10
-#    l = (m-k)/10
-#    temp[42*k:(42*k+42),58*l:(58*l+58)] = (blockInfo[i*100+m])*25.5
-#plt.imshow(temp)
+## Looking at Some Images
+
+Block_Profiles = np.genfromtxt('/Users/tiruviluamala/Downloads/Block_Profiles.csv', delimiter=",")
+length = 20
+block_sums2 = np.zeros(length)
+
+for i in range(length):
+    j = i*100+1
+    temp = np.zeros((420,580))
+    block_sum = 0                
+    for m in range(100):
+        k = m % 10
+        l = m//10
+        temp[42*k:(42*k+42),58*l:(58*l+58)] = Block_Profiles[j+m, 2]
+        block_sum = block_sum + Block_Profiles[j+m, 2]
+    plt.imshow(temp)
+    block_sums2[i] = block_sum
+plt.hist(block_sums2, bins = 100, range = [0,100])
+
+## Histogram for Training Images
+train_folder = '/Users/tiruviluamala/Desktop/UltrasoundNerveSegmentation/train'
+dir_list = os.listdir(train_folder)
+dir_list = [x for x in dir_list if not('mask' in x)]
+
+train_num = 5000
+block_sums = np.zeros(train_num)
+
+for i in range(train_num): 
+    for j in range(100):
+        k = j % 10
+        l = j//10
+        block_sums[i] = block_sums[i] + int(int(np.sum(misc.imread(train_folder + os.sep+dir_list[i].split('.')[0] + '_mask.tif')[42*k:(42*k+42),58*l:(58*l+58)])/(4.2*58*255)) > 0)
+    print(i)
+plt.hist(block_sums, bins = 16, range = [0,16])
+    
 #
 #
 #with open('/Images/Blocks_Submission.csv','w', newline='') as csvfile:
