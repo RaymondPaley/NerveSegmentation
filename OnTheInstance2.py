@@ -80,6 +80,8 @@ loss = lasagne.objectives.categorical_crossentropy(prediction, target_var)
 loss = loss.mean() + 1e-4 * lasagne.regularization.regularize_network_params(
         network, lasagne.regularization.l2)
 
+print(lasagne.layers.get_output_shape(network))
+
 # create parameter update expressions
 params = lasagne.layers.get_all_params(network, trainable=True)
 updates = lasagne.updates.nesterov_momentum(loss, params, learning_rate=0.0001,

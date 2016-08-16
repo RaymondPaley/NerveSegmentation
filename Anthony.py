@@ -75,7 +75,7 @@ Conv2b = lasagne.layers.Conv2DLayer(Pool1, 32, (3,3),nonlinearity=leaky_rectify)
 Pool2 = lasagne.layers.Pool2DLayer(Conv2b, (2, 2), mode='max')
 
 Conv3a = lasagne.layers.Conv2DLayer(Pool2, 32, (3,3),nonlinearity=leaky_rectify)
-Conv3b = lasagne.layers.Conv2DLayer(Conv3a), 32, (3,3),nonlinearity=leaky_rectify)
+Conv3b = lasagne.layers.Conv2DLayer(Conv3a, 32, (3,3),nonlinearity=leaky_rectify)
 
 Pool3 = lasagne.layers.Pool2DLayer(Conv3b, (2, 2), mode='max')
 
@@ -98,7 +98,7 @@ Conv6b = lasagne.layers.Conv2DLayer(Conv6a, 32, (3,3), nonlinearity=leaky_rectif
 UpConv2 = lasagne.layers.TransposedConv2DLayer(Conv6b,32,(2,2),nonlinearity=leaky_rectify)
 
 #Merge layer here merges Next one up from bottom merge layer
-merge3 = lasagne.layers.ConcatLayer((Conv3b,UpConv2)1,None)
+merge3 = lasagne.layers.ConcatLayer((Conv3b,UpConv2),1,None)
 Conv7a = lasagne.layers.Conv2DLayer(merge3,32,(3,3),nonlinearity=leaky_rectify)
 Conv7b = lasagne.layers.Conv2DLayer(Conv7a, 32, (3,3), nonlinearity=leaky_rectify)
 
