@@ -8,7 +8,7 @@ Created on Sun Jun 19 14:48:23 2016
 import lasagne
 import theano
 import theano.tensor as T
-from lasagne.nonlinearities import leaky_rectify, softmax
+from lasagne.nonlinearities import leaky_rectify, softmax, sigmoid
 import scipy.misc as misc
 import time
 import numpy as np
@@ -24,9 +24,12 @@ dir_list_test = [x for x in dir_list_test if 'tif' in x]
 
 test_num = len(dir_list_test)
 
+base_filt = 8
+down_sample = 1.0
+x_dim = int(420*down_sample)
+y_dim = int(580*down_sample)
 
-
-X_test = np.empty((1, 1, 420,580))
+X_test = np.empty((1, 1, x_dim,y_dim))
 
 #Create mechanism for working through minibatches
 def iterate_minibatches(inputs, targets, batchsize, shuffle=False):
@@ -43,77 +46,83 @@ def iterate_minibatches(inputs, targets, batchsize, shuffle=False):
         
 # create Theano variables for input and target minibatch
 input_var = T.tensor4('X')
-target_var = T.itensor3('y')
+target_var = T.tensor3('y')
 
 # Implement the U-net architecture
 
 batch_size = 2
 
-Inp = lasagne.layers.InputLayer((None, 1, 420, 580), input_var)
+Inp = lasagne.layers.InputLayer((None, 1, x_dim, y_dim), input_var)
 
-Conv1a = lasagne.layers.Conv2DLayer(Inp, 64, (3,3), nonlinearity=leaky_rectify)
-Conv1b = lasagne.layers.Conv2DLayer(Conv1a, 64, (3,3), nonlinearity=leaky_rectify, pad = 'full')
+Conv1a = lasagne.layers.Conv2DLayer(Inp, base_filt, (3,3), nonlinearity=leaky_rectify)
+Conv1b = lasagne.layers.Conv2DLayer(Conv1a, base_filt, (3,3), nonlinearity=leaky_rectify, pad = 'full')
 
 Pool1 = lasagne.layers.Pool2DLayer(Conv1b, (2, 2), mode='max')
 
-Conv2a = lasagne.layers.Conv2DLayer(Pool1, 128, (3,3),nonlinearity=leaky_rectify)
-Conv2b = lasagne.layers.Conv2DLayer(Conv2a, 128, (3,3),nonlinearity=leaky_rectify, pad = 'full')
+Conv2a = lasagne.layers.Conv2DLayer(Pool1, 2*base_filt, (3,3),nonlinearity=leaky_rectify)
+Conv2b = lasagne.layers.Conv2DLayer(Conv2a, 2*base_filt, (3,3),nonlinearity=leaky_rectify, pad = 'full')
 
 Pool2 = lasagne.layers.Pool2DLayer(Conv2b, (2, 2), mode='max')
 
-Conv3a = lasagne.layers.Conv2DLayer(Pool2, 256, (3,3),nonlinearity=leaky_rectify)
-Conv3b = lasagne.layers.Conv2DLayer(Conv3a, 256, (3,3),nonlinearity=leaky_rectify, pad = 'full')
+Conv3a = lasagne.layers.Conv2DLayer(Pool2, 4*base_filt, (3,3),nonlinearity=leaky_rectify)
+Conv3b = lasagne.layers.Conv2DLayer(Conv3a, 4*base_filt, (3,3),nonlinearity=leaky_rectify, pad = 'full')
 
 Pool3 = lasagne.layers.Pool2DLayer(Conv3b, (2, 2), mode='max')
 
-Conv4a = lasagne.layers.Conv2DLayer(Pool3, 512, (3,3),nonlinearity=leaky_rectify)
-Conv4b = lasagne.layers.Conv2DLayer(Conv4a, 512, (3,3),nonlinearity=leaky_rectify, pad = 'full')
+Conv4a = lasagne.layers.Conv2DLayer(Pool3, 8*base_filt, (3,3),nonlinearity=leaky_rectify)
+Conv4b = lasagne.layers.Conv2DLayer(Conv4a, 8*base_filt, (3,3),nonlinearity=leaky_rectify, pad = 'full')
 
 Pool4 = lasagne.layers.Pool2DLayer(Conv4b, (2, 2), mode='max')
 
-Conv5a = lasagne.layers.Conv2DLayer(Pool4, 1024, (3,3),nonlinearity=leaky_rectify)
-Conv5b = lasagne.layers.Conv2DLayer(Conv5a, 512, (3,3),nonlinearity=leaky_rectify, pad = 'full')
+Conv5a = lasagne.layers.Conv2DLayer(Pool4, 16*base_filt, (3,3),nonlinearity=leaky_rectify, pad = 1)
+Conv5b = lasagne.layers.Conv2DLayer(Conv5a, 8*base_filt, (3,3),nonlinearity=leaky_rectify, pad = 'full')
 
-UpConv1 = lasagne.layers.TransposedConv2DLayer(Conv5b, 512, filter_size = (2,2), stride = 2, nonlinearity=leaky_rectify)
+UpConv1 = lasagne.layers.TransposedConv2DLayer(Conv5b, 8*base_filt, filter_size = (2,2), stride = 2, nonlinearity=leaky_rectify)
 
 #merge layer here merges bottom of U
-merge4 = lasagne.layers.ConcatLayer([Conv4b,UpConv1], 1, cropping = None)
-Conv6a = lasagne.layers.Conv2DLayer(merge4, 512, (3,3), nonlinearity=leaky_rectify, pad = 1)
-Conv6b = lasagne.layers.Conv2DLayer(Conv6a, 256, (3,3), nonlinearity=leaky_rectify, pad = 'full')
+merge4 = lasagne.layers.ConcatLayer([Conv4b,UpConv1], 1, cropping = [None, None, 'center', 'center'])
+Conv6a = lasagne.layers.Conv2DLayer(merge4, 8*base_filt, (3,3), nonlinearity=leaky_rectify, pad = 1)
+Conv6b = lasagne.layers.Conv2DLayer(Conv6a, 4*base_filt, (3,3), nonlinearity=leaky_rectify, pad = 'full')
 
-UpConv2 = lasagne.layers.TransposedConv2DLayer(Conv6b, 256, filter_size = (2,2), stride = 2, nonlinearity=leaky_rectify)
+UpConv2 = lasagne.layers.TransposedConv2DLayer(Conv6b, 4*base_filt, filter_size = (2,2), stride = 2, nonlinearity=leaky_rectify)
 
 #Merge layer here merges Next one up from bottom merge layer
 merge3 = lasagne.layers.ConcatLayer([Conv3b,UpConv2], 1, cropping = [None, None, 'center', 'center'])
 
-Conv7a = lasagne.layers.Conv2DLayer(merge3, 256, (3,3), nonlinearity=leaky_rectify)
-Conv7b = lasagne.layers.Conv2DLayer(Conv7a, 128, (3,3), nonlinearity=leaky_rectify, pad = 'full')
+Conv7a = lasagne.layers.Conv2DLayer(merge3, 4*base_filt, (3,3), nonlinearity=leaky_rectify, pad = 1)
+Conv7b = lasagne.layers.Conv2DLayer(Conv7a, 2*base_filt, (3,3), nonlinearity=leaky_rectify, pad = 'full')
 
-UpConv3 = lasagne.layers.TransposedConv2DLayer(Conv7b, 128,filter_size = (2,2), stride = 2, nonlinearity=leaky_rectify)
+UpConv3 = lasagne.layers.TransposedConv2DLayer(Conv7b, 2*base_filt,filter_size = (2,2), stride = 2, nonlinearity=leaky_rectify)
 
 #merge layer here merges next one up from merge3
-merge2 = lasagne.layers.ConcatLayer([Conv2b,UpConv3], 1, cropping = None)
-Conv8a = lasagne.layers.Conv2DLayer(merge2, 128, (3,3), nonlinearity=leaky_rectify)
-Conv8b = lasagne.layers.Conv2DLayer(Conv8a, 64, (3,3), nonlinearity=leaky_rectify, pad = 'full')
+merge2 = lasagne.layers.ConcatLayer([Conv2b,UpConv3], 1, cropping = [None, None, 'center', 'center'])
+Conv8a = lasagne.layers.Conv2DLayer(merge2, 2*base_filt, (3,3), nonlinearity=leaky_rectify, pad = 1)
+Conv8b = lasagne.layers.Conv2DLayer(Conv8a, base_filt, (3,3), nonlinearity=leaky_rectify, pad = 'full')
 
-UpConv4 = lasagne.layers.TransposedConv2DLayer(Conv8b, 64, filter_size = (2,2),stride = 2, nonlinearity=leaky_rectify)
+UpConv4 = lasagne.layers.TransposedConv2DLayer(Conv8b, base_filt, filter_size = (2,2),stride = 2, nonlinearity=leaky_rectify)
 
 #merge layer here merges top of U
-merge1 = lasagne.layers.ConcatLayer([Conv1b,UpConv4], 1, cropping = None)
-Conv9a =lasagne.layers.Conv2DLayer(merge1, 64, (3,3), nonlinearity=leaky_rectify)
-Conv9b = lasagne.layers.Conv2DLayer(Conv9a, 64, (3,3), nonlinearity=leaky_rectify, pad = 'full')
+merge1 = lasagne.layers.ConcatLayer([Conv1b,UpConv4], 1, cropping = [None, None, 'center', 'center'])
+Conv9a =lasagne.layers.Conv2DLayer(merge1, base_filt, (3,3), nonlinearity=leaky_rectify)
+Conv9b = lasagne.layers.Conv2DLayer(Conv9a, base_filt, (3,3), nonlinearity=leaky_rectify, pad = 'full')
 
+#Tweaking the output layer    
 network  = lasagne.layers.Conv2DLayer(Conv9b, 2, (1,1), nonlinearity = leaky_rectify)
 
+network_compressed = lasagne.layers.Conv2DLayer(network, 1, (1,1), nonlinearity = sigmoid)
+
+network_sig = lasagne.layers.SliceLayer(network_compressed, indices = 0, axis = 1)
+
 # create loss function
-prediction = lasagne.layers.get_output(network)
+prediction = lasagne.layers.get_output(network_sig)
 loss = lasagne.objectives.binary_crossentropy(prediction, target_var)
+  
 loss = loss.mean() + 1e-4 * lasagne.regularization.regularize_network_params(
         network, lasagne.regularization.l2)
 
 # create parameter update expressions
 params = lasagne.layers.get_all_params(network, trainable=True)
-updates = lasagne.updates.nesterov_momentum(loss, params, learning_rate=0.00011,
+updates = lasagne.updates.nesterov_momentum(loss, params, learning_rate=0.0001,
                                             momentum=0.9)
 
 # compile training function that updates parameters and returns training loss
@@ -134,23 +143,26 @@ dir_list = [x for x in dir_list if not('mask' in x)]
 
 
 #Train in Chunks
-train_num = 200
+debug_fn = theano.function([input_var], prediction, allow_input_downcast = True)
 
-X_train = np.empty((train_num, 1, 420,580))
-y_train = np.empty(train_num, 420, 580)
+train_num = 100
+
+X_train = np.empty((train_num, 1, x_dim, y_dim))
+y_train = np.empty((train_num, x_dim, y_dim))
 
 with open('/Images/errors.csv','w') as csvfile:
     error = csv.writer(csvfile, delimiter=',')
     error.writerow(['Train Error'])    
     
-    for passNumber in range(1):
+    for passNumber in range(10000):
         np.random.seed(passNumber)       
         shuffled = np.random.choice(range(len(dir_list)), train_num, replace = False)
           
         for i in range(train_num):        
-            X_train[i,0] = misc.imread(train_folder+os.sep+dir_list[shuffled[i]])
-            y_train[i] = 1.0*(misc.imread(train_folder + os.sep+dir_list[shuffled[i]].split('.')[0] + '_mask.tif') > 0)
+            X_train[i,0] = misc.imresize(misc.imread(train_folder+os.sep+dir_list[shuffled[i]]),size = down_sample)
+            y_train[i] = 1.0*(misc.imresize(misc.imread(train_folder + os.sep+dir_list[shuffled[i]].split('.')[0] + '_mask.tif'), size = down_sample) > 0)
                
+#        print(debug_fn(X_train[0:1]).shape, y_train[0:1].shape)       
         # train network
         num_epochs = 1
         
@@ -195,14 +207,15 @@ def RLE(p_image):
                 i = i + 1
             enc_mask.append(count)
         i = i + 1
-    
+        print(i)
     return enc_mask
         
 with open('/Images/Submission_RLEs.csv','w') as csvfile:
     imagesub = csv.writer(csvfile, delimiter=',')
     imagesub.writerow(['img','Prediction'])
-    for i in range(test_num):
+    print(test_num)    
+    for i in range(1):
         imageNum = dir_list_test[i].split('.')[0]
-        X_test[0,0] = misc.imread(test_folder+os.sep+dir_list_test[i])        
+        X_test[0,0] = misc.imresize(misc.imread(test_folder+os.sep+dir_list_test[i]), size = down_sample)        
                 
         imagesub.writerow([imageNum, RLE(predict_fn(X_test[0:1])[0])])
