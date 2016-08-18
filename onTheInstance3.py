@@ -25,8 +25,17 @@ dir_list_test = [x for x in dir_list_test if 'tif' in x]
 
 test_num = len(dir_list_test)
 
-base_filt = 16
-down_sample = 1.0
+#Toggle
+pass_num = 5
+load = True
+base_filt = 32
+down_sample = 0.2
+num_outputs = 20
+
+prob_thresh = 0.3
+min_thresh = 10
+
+
 x_dim = int(420*down_sample)
 y_dim = int(580*down_sample)
 
@@ -119,11 +128,11 @@ prediction = lasagne.layers.get_output(network_sig)
 loss = lasagne.objectives.binary_crossentropy(prediction, target_var)
   
 loss = loss.mean() + 1e-4 * lasagne.regularization.regularize_network_params(
-        network, lasagne.regularization.l2)
+        network_sig, lasagne.regularization.l2)
 
 # create parameter update expressions
-params = lasagne.layers.get_all_params(network, trainable=True)
-updates = lasagne.updates.nesterov_momentum(loss, params, learning_rate=0.0001,
+params = lasagne.layers.get_all_params(network_sig, trainable=True)
+updates = lasagne.updates.nesterov_momentum(loss, params, learning_rate=0.001,
                                             momentum=0.9)
 
 # compile training function that updates parameters and returns training loss
@@ -131,10 +140,12 @@ train_fn = theano.function([input_var, target_var], loss, updates=updates, allow
 
 # load previously obtained params
 
-#with np.load('/Images/model_Unet3.npz') as f:
-#     param_values = [f['arr_%d' % i] for i in range(len(f.files))]
-#
-#lasagne.layers.set_all_param_values(network, param_values)
+if load == True:
+    with np.load('/Images/model_Unet_Small.npz') as f:
+        param_values = [f['arr_%d' % i] for i in range(len(f.files))]
+
+    lasagne.layers.set_all_param_values(network_sig, param_values)
+
 
 #Set up Training Data
 train_folder = '/Images/train'
@@ -155,13 +166,14 @@ with open('/Images/errors.csv','w') as csvfile:
     error = csv.writer(csvfile, delimiter=',')
     error.writerow(['Train Error'])    
     
-    for passNumber in range(50):
+    for passNumber in range(pass_num):
         np.random.seed(passNumber)       
         shuffled = np.random.choice(range(len(dir_list)), train_num, replace = False)
           
         for i in range(train_num):        
             X_train[i,0] = misc.imresize(misc.imread(train_folder+os.sep+dir_list[shuffled[i]]),size = down_sample)
             y_train[i] = 1.0*(misc.imresize(misc.imread(train_folder + os.sep+dir_list[shuffled[i]].split('.')[0] + '_mask.tif'), size = down_sample) > 0)
+            
                
 #        print(debug_fn(X_train[0:1]).shape, y_train[0:1].shape)       
         # train network
@@ -182,25 +194,26 @@ with open('/Images/errors.csv','w') as csvfile:
             print("Epoch {} of {} took {:.3f}s".format(
                 epoch + 1, num_epochs, time.time() - start_time))
             print("  training loss:\t\t{:.6f}".format(train_err / train_batches))
-            
+            print(passNumber)
         ## use trained network for predictions
         error.writerow([train_err / train_batches])
         
         ## save updated parameters        
-        np.savez('/Images/model_Unet.npz', *lasagne.layers.get_all_param_values(network))
+        np.savez('/Images/model_Unet_Small.npz', *lasagne.layers.get_all_param_values(network_sig))
 
 ## Saving
-
-border_percent = 0.5
 
 predict_fn = theano.function([input_var], prediction, allow_input_downcast = True)
 
 def RLE(label):
     from itertools import chain
-    label = misc.imresize(label, size = (420,580))
+
+    im_thresh = 1*(label < prob_thresh)
+    label = misc.imresize(im_thresh, (420,580))
+
     x = label.transpose().flatten()
-    y = np.where(x > border_percent)[0]
-    if len(y) < 10:  # consider as empty
+    y = np.where(x > 0)[0]
+    if len(y) < min_thresh:  # consider as empty
         return ''
     z = np.where(np.diff(y) > 1)[0]
     start = np.insert(y[z+1], 0, y[0])
@@ -210,14 +223,26 @@ def RLE(label):
     res = list(chain.from_iterable(res))
     return ' '.join([str(r) for r in res])
         
-with open('/Images/Submission_RLEs.csv','w') as csvfile:
+with open('/Images/Submission_RLEs5.csv','w') as csvfile:
     imagesub = csv.writer(csvfile, delimiter=',')
-    imagesub.writerow(['img','Prediction'])
+    imagesub.writerow(['img','pixels'])
 
     start_time = time.time()    
-    for i in range(test_num):
+    for i in range(num_outputs):
         imageNum = dir_list_test[i].split('.')[0]
         X_test[0,0] = misc.imresize(misc.imread(test_folder+os.sep+dir_list_test[i]), size = down_sample)        
                 
         imagesub.writerow([imageNum, RLE(predict_fn(X_test[0:1])[0])])
+
         print(time.time() - start_time)
+
+        np.save('/Images/imtestpred' + str(i), predict_fn(X_test[0:1])[0])
+
+#Predicting on Train Images      
+shuffled = np.random.choice(range(len(dir_list)), 20, replace = False)
+  
+for i in range(20):        
+    X_train[i,0] = misc.imresize(misc.imread(train_folder+os.sep+dir_list[shuffled[i]]),size = down_sample)
+    y_train[i] = 1.0*(misc.imresize(misc.imread(train_folder + os.sep+dir_list[shuffled[i]].split('.')[0] + '_mask.tif'), size = down_sample) > 0)
+    np.save('/Images/imtrainpred' + str(i), predict_fn(X_train[i:i+1])[0])
+    np.save('/Images/imtrain' + str(i), y_train[i])
