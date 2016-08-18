@@ -25,7 +25,7 @@ dir_list_test = [x for x in dir_list_test if 'tif' in x]
 
 test_num = len(dir_list_test)
 
-base_filt = 8
+base_filt = 16
 down_sample = 1.0
 x_dim = int(420*down_sample)
 y_dim = int(580*down_sample)
@@ -155,7 +155,7 @@ with open('/Images/errors.csv','w') as csvfile:
     error = csv.writer(csvfile, delimiter=',')
     error.writerow(['Train Error'])    
     
-    for passNumber in range(40):
+    for passNumber in range(50):
         np.random.seed(passNumber)       
         shuffled = np.random.choice(range(len(dir_list)), train_num, replace = False)
           
@@ -187,7 +187,7 @@ with open('/Images/errors.csv','w') as csvfile:
         error.writerow([train_err / train_batches])
         
         ## save updated parameters        
-        np.savez('/Images/model_Unet3.npz', *lasagne.layers.get_all_param_values(network))
+        np.savez('/Images/model_Unet.npz', *lasagne.layers.get_all_param_values(network))
 
 ## Saving
 
@@ -197,6 +197,7 @@ predict_fn = theano.function([input_var], prediction, allow_input_downcast = Tru
 
 def RLE(label):
     from itertools import chain
+    label = misc.imresize(label, size = (420,580))
     x = label.transpose().flatten()
     y = np.where(x > border_percent)[0]
     if len(y) < 10:  # consider as empty
