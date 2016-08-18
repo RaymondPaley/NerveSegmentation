@@ -15,6 +15,7 @@ import numpy as np
 import os
 import sys
 import csv
+from re import sub
 
 #Set up Test Data
 test_folder = '/Images/test'
@@ -130,7 +131,7 @@ train_fn = theano.function([input_var, target_var], loss, updates=updates, allow
 
 # load previously obtained params
 
-#with np.load('/Images/model_Unet.npz') as f:
+#with np.load('/Images/model_Unet3.npz') as f:
 #     param_values = [f['arr_%d' % i] for i in range(len(f.files))]
 #
 #lasagne.layers.set_all_param_values(network, param_values)
@@ -154,7 +155,7 @@ with open('/Images/errors.csv','w') as csvfile:
     error = csv.writer(csvfile, delimiter=',')
     error.writerow(['Train Error'])    
     
-    for passNumber in range(10000):
+    for passNumber in range(40):
         np.random.seed(passNumber)       
         shuffled = np.random.choice(range(len(dir_list)), train_num, replace = False)
           
@@ -186,36 +187,36 @@ with open('/Images/errors.csv','w') as csvfile:
         error.writerow([train_err / train_batches])
         
         ## save updated parameters        
-        np.savez('/Images/model_Unet.npz', *lasagne.layers.get_all_param_values(network))
+        np.savez('/Images/model_Unet3.npz', *lasagne.layers.get_all_param_values(network))
 
 ## Saving
 
-predict_fn = theano.function([input_var], T.argmax(prediction, axis=1), allow_input_downcast = True)
+border_percent = 0.5
 
-def RLE(p_image):
-    mask = p_image.reshape((p_image.shape[0]*p_image.shape[1]),order = 'F')
-    
-    enc_mask = list()
+predict_fn = theano.function([input_var], prediction, allow_input_downcast = True)
 
-    i = 0
-    while i in range(len(mask)):
-        if mask[i] != 0:
-            enc_mask.append(i+1)
-            count = 0
-            while mask[i] != 0:
-                count = count + 1
-                i = i + 1
-            enc_mask.append(count)
-        i = i + 1
-        print(i)
-    return enc_mask
+def RLE(label):
+    from itertools import chain
+    x = label.transpose().flatten()
+    y = np.where(x > border_percent)[0]
+    if len(y) < 10:  # consider as empty
+        return ''
+    z = np.where(np.diff(y) > 1)[0]
+    start = np.insert(y[z+1], 0, y[0])
+    end = np.append(y[z], y[-1])
+    length = end - start
+    res = [[s+1, l+1] for s, l in zip(list(start), list(length))]
+    res = list(chain.from_iterable(res))
+    return ' '.join([str(r) for r in res])
         
 with open('/Images/Submission_RLEs.csv','w') as csvfile:
     imagesub = csv.writer(csvfile, delimiter=',')
     imagesub.writerow(['img','Prediction'])
-    print(test_num)    
-    for i in range(1):
+
+    start_time = time.time()    
+    for i in range(test_num):
         imageNum = dir_list_test[i].split('.')[0]
         X_test[0,0] = misc.imresize(misc.imread(test_folder+os.sep+dir_list_test[i]), size = down_sample)        
                 
         imagesub.writerow([imageNum, RLE(predict_fn(X_test[0:1])[0])])
+        print(time.time() - start_time)
